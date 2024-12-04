@@ -1,6 +1,7 @@
+
 // SPDX-License-Identifier: GPL-2.0-only
 
-#include "driver_tracked_device.h"
+#include "controller_device.hpp"
 
 #include "driver_vrmath.h"
 #include "driverlog.h"
@@ -14,11 +15,15 @@ static const char* my_tracker_main_settings_section = "driver_simpletrackers";
 // These are the keys we want to retrieve the values for in the settings
 static const char* my_tracker_settings_key_model_number = "mytracker_model_number";
 
-MyTrackerDeviceDriver::MyTrackerDeviceDriver(unsigned int my_tracker_id)
+MyControllerDeviceDriver::MyControllerDeviceDriver(unsigned int my_tracker_id, const DeviceRole my_role)
 {
     // Set a member to keep track of whether we've activated yet or not
 
-    my_tracker_id_ = my_tracker_id;
+    my_controller_id_ = my_tracker_id;
+
+    // The constructor takes a role argument, that gives us information about if our controller is a left or right hand.
+    // Let's store it for later use. We'll need it.
+    my_controller_role_ = toVr(my_role);
 
     // We have our model number and serial number stored in SteamVR settings. We need to get them and do so here.
     // Other IVRSettings methods (to get int32, floats, bools) return the data, instead of modifying, but strings are
@@ -26,7 +31,7 @@ MyTrackerDeviceDriver::MyTrackerDeviceDriver(unsigned int my_tracker_id)
     // char model_number[1024];
     // vr::VRSettings()->GetString(
     //     my_tracker_main_settings_section, my_tracker_settings_key_model_number, model_number, sizeof(model_number));
-    my_device_model_number_ = "asiotest_tracker";
+    my_device_model_number_ = "asiotest_controller";
 
     // Emulate a serial number by appending the internal tracker id we are given by our implementation of
     // IServerTrackedDeviceProvider
@@ -43,7 +48,7 @@ MyTrackerDeviceDriver::MyTrackerDeviceDriver(unsigned int my_tracker_id)
 // Purpose: This is called by vrserver after our
 //  IServerTrackedDeviceProvider calls IVRServerDriverHost::TrackedDeviceAdded.
 //-----------------------------------------------------------------------------
-vr::EVRInitError MyTrackerDeviceDriver::Activate(uint32_t unObjectId)
+vr::EVRInitError MyControllerDeviceDriver::Activate(uint32_t unObjectId)
 {
     // Set an member to keep track of whether we've activated yet or not
     // is_active_ = true;
@@ -75,8 +80,27 @@ vr::EVRInitError MyTrackerDeviceDriver::Activate(uint32_t unObjectId)
     // We need to get handles to them to update the inputs.
 
     // Let's set up our "A" button. We've defined it to have a touch and a click component.
-    vr::VRDriverInput()->CreateBooleanComponent(container, "/input/a/touch", &input_handles_[MyComponent_a_touch]);
-    vr::VRDriverInput()->CreateBooleanComponent(container, "/input/a/click", &input_handles_[MyComponent_a_click]);
+    vr::VRDriverInput()->CreateBooleanComponent(container, "/input/a/touch", &input_handles_[MyControllerComponent_a_touch]);
+    vr::VRDriverInput()->CreateBooleanComponent(container, "/input/a/click", &input_handles_[MyControllerComponent_a_click]);
+
+    // Let's tell SteamVR our role which we received from the constructor earlier.
+    vr::VRProperties()->SetInt32Property(container, vr::Prop_ControllerRoleHint_Int32, my_controller_role_);
+
+    // Now let's set up our inputs
+
+    // This tells the UI what to show the user for bindings for this controller,
+    // As well as what default bindings should be for legacy apps.
+    // Note, we can use the wildcard {<driver_name>} to match the root folder location
+    // of our driver.
+    vr::VRProperties()->SetStringProperty(container, vr::Prop_InputProfilePath_String, "{asiotest}/input/mycontroller_profile.json");
+
+    // Let's set up handles for all of our components.
+    // Even though these are also defined in our input profile,
+    // We need to get handles to them to update the inputs.
+
+    // Let's set up our "A" button. We've defined it to have a touch and a click component.
+    vr::VRDriverInput()->CreateBooleanComponent(container, "/input/a/touch", &input_handles_[MyControllerComponent_a_touch]);
+    vr::VRDriverInput()->CreateBooleanComponent(container, "/input/a/click", &input_handles_[MyControllerComponent_a_click]);
 
     // Let's set up our trigger. We've defined it to have a value and click component.
 
@@ -85,12 +109,12 @@ vr::EVRInitError MyTrackerDeviceDriver::Activate(uint32_t unObjectId)
     // can do it absolute.
     // EVRScalarUnits - whether the devices has two "sides", like a joystick. This makes the range of valid inputs -1
     // to 1. Otherwise, it's 0 to 1. We only have one "side", so ours is onesided.
-    vr::VRDriverInput()->CreateScalarComponent(container, "/input/trigger/value",
-        &input_handles_[MyComponent_trigger_value], vr::VRScalarType_Absolute, vr::VRScalarUnits_NormalizedOneSided);
-    vr::VRDriverInput()->CreateBooleanComponent(
-        container, "/input/trigger/click", &input_handles_[MyComponent_trigger_click]);
+    vr::VRDriverInput()->CreateScalarComponent(container, "/input/trigger/value", &input_handles_[MyControllerComponent_trigger_value], vr::VRScalarType_Absolute, vr::VRScalarUnits_NormalizedOneSided);
+    vr::VRDriverInput()->CreateBooleanComponent(container, "/input/trigger/click", &input_handles_[MyControllerComponent_trigger_click]);
 
-    // my_pose_update_thread_ = std::thread(&MyTrackerDeviceDriver::MyPoseUpdateThread, this);
+    // Let's create our haptic component.
+    // These are global across the device, and you can only have one per device.
+    vr::VRDriverInput()->CreateHapticComponent(container, "/output/haptic", &input_handles_[MyControllerComponent_haptic]);
 
     // We've activated everything successfully!
     // Let's tell SteamVR that by saying we don't have any errors.
@@ -103,7 +127,7 @@ vr::EVRInitError MyTrackerDeviceDriver::Activate(uint32_t unObjectId)
 //
 // But this a simple example to demo for a controller, so we'll just return nullptr here.
 //-----------------------------------------------------------------------------
-void* MyTrackerDeviceDriver::GetComponent(const char* pchComponentNameAndVersion)
+void* MyControllerDeviceDriver::GetComponent(const char* pchComponentNameAndVersion)
 {
     return nullptr;
 }
@@ -112,7 +136,7 @@ void* MyTrackerDeviceDriver::GetComponent(const char* pchComponentNameAndVersion
 // Purpose: This is called by vrserver when a debug request has been made from an application to the driver.
 // What is in the response and request is up to the application and driver to figure out themselves.
 //-----------------------------------------------------------------------------
-void MyTrackerDeviceDriver::DebugRequest(
+void MyControllerDeviceDriver::DebugRequest(
     const char* pchRequest, char* pchResponseBuffer, uint32_t unResponseBufferSize)
 {
     if (unResponseBufferSize >= 1)
@@ -123,7 +147,7 @@ void MyTrackerDeviceDriver::DebugRequest(
 // Purpose: This is never called by vrserver in recent OpenVR versions,
 // but is useful for giving data to vr::VRServerDriverHost::TrackedDevicePoseUpdated.
 //-----------------------------------------------------------------------------
-vr::DriverPose_t MyTrackerDeviceDriver::GetPose()
+vr::DriverPose_t MyControllerDeviceDriver::GetPose()
 {
     // Let's retrieve the Hmd pose to base our controller pose off.
 
@@ -150,7 +174,7 @@ vr::DriverPose_t MyTrackerDeviceDriver::GetPose()
     pose.qRotation = hmd_orientation;
 
     const vr::HmdVector3_t offset_position = {
-        -0.15f + my_tracker_id_ * 0.15f, // translate our tracker depending on the id we were provided
+        -0.15f * 0.15f, // translate our tracker depending on the id we were provided
         0.1f, // shift it up a little to make it more in view
         -0.5f, // put each controller 0.5m forward in front of the hmd so we can see it.
     };
@@ -181,7 +205,7 @@ vr::DriverPose_t MyTrackerDeviceDriver::GetPose()
     return pose;
 }
 
-void MyTrackerDeviceDriver::MyPoseUpdateThread()
+void MyControllerDeviceDriver::MyPoseUpdateThread()
 {
     // while (is_active_) {
     //     // Inform the vrserver that our tracked device's pose has updated, giving it the pose returned by our GetPose().
@@ -198,9 +222,9 @@ void MyTrackerDeviceDriver::MyPoseUpdateThread()
 // The device should be put into whatever low power mode it has.
 // We don't really have anything to do here, so let's just log something.
 //-----------------------------------------------------------------------------
-void MyTrackerDeviceDriver::EnterStandby()
+void MyControllerDeviceDriver::EnterStandby()
 {
-    DriverLog("Tracker has been put into standby");
+    DriverLog("Controller has been put into standby");
 }
 
 //-----------------------------------------------------------------------------
@@ -208,7 +232,7 @@ void MyTrackerDeviceDriver::EnterStandby()
 // This is typically at the end of a session
 // The device should free any resources it has allocated here.
 //-----------------------------------------------------------------------------
-void MyTrackerDeviceDriver::Deactivate()
+void MyControllerDeviceDriver::Deactivate()
 {
     // Let's join our pose thread that's running
     // by first checking then setting is_active_ to false to break out
@@ -221,7 +245,7 @@ void MyTrackerDeviceDriver::Deactivate()
     my_device_index_ = vr::k_unTrackedDeviceIndexInvalid;
 }
 
-void MyTrackerDeviceDriver::hTurnOff()
+void MyControllerDeviceDriver::hTurnOff()
 {
     vr::DriverPose_t pose = { 0 };
 
@@ -243,7 +267,7 @@ void MyTrackerDeviceDriver::hTurnOff()
     vr::VRServerDriverHost()->TrackedDevicePoseUpdated(my_device_index_, pose, sizeof(pose));
 }
 
-void MyTrackerDeviceDriver::hTurnOn()
+void MyControllerDeviceDriver::hTurnOn()
 {
     vr::DriverPose_t pose = { 0 };
 
@@ -269,29 +293,51 @@ void MyTrackerDeviceDriver::hTurnOn()
 // Purpose: This is called by our IServerTrackedDeviceProvider when its RunFrame() method gets called.
 // It's not part of the ITrackedDeviceServerDriver interface, we created it ourselves.
 //-----------------------------------------------------------------------------
-void MyTrackerDeviceDriver::MyRunFrame()
+void MyControllerDeviceDriver::MyRunFrame()
 {
     // update our inputs here
-    vr::VRDriverInput()->UpdateBooleanComponent(input_handles_[MyComponent_a_click], false, 0);
-    vr::VRDriverInput()->UpdateBooleanComponent(input_handles_[MyComponent_a_touch], false, 0);
+    vr::VRDriverInput()->UpdateBooleanComponent(input_handles_[MyControllerComponent_a_click], false, 0);
+    vr::VRDriverInput()->UpdateBooleanComponent(input_handles_[MyControllerComponent_a_touch], false, 0);
 
-    vr::VRDriverInput()->UpdateBooleanComponent(input_handles_[MyComponent_trigger_click], false, 0);
-    vr::VRDriverInput()->UpdateScalarComponent(input_handles_[MyComponent_trigger_value], 0.f, 0);
+    vr::VRDriverInput()->UpdateBooleanComponent(input_handles_[MyControllerComponent_trigger_click], false, 0);
+    vr::VRDriverInput()->UpdateScalarComponent(input_handles_[MyControllerComponent_trigger_value], 0.f, 0);
 }
 
 //-----------------------------------------------------------------------------
 // Purpose: This is called by our IServerTrackedDeviceProvider when it pops an event off the event queue.
 // It's not part of the ITrackedDeviceServerDriver interface, we created it ourselves.
 //-----------------------------------------------------------------------------
-void MyTrackerDeviceDriver::hProcessEvent(const vr::VREvent_t& vrevent)
+void MyControllerDeviceDriver::hProcessEvent(const vr::VREvent_t& vrevent)
 {
-    // Our tracker doesn't have any events it wants to process.
+    switch (vrevent.eventType) {
+    // Listen for haptic events
+    case vr::VREvent_Input_HapticVibration: {
+        // We now need to make sure that the event was intended for this device.
+        // So let's compare handles of the event and our haptic component
+
+        if (vrevent.data.hapticVibration.componentHandle == input_handles_[MyControllerComponent_haptic]) {
+            // The event was intended for us!
+            // To convert the data to a pulse, see the docs.
+            // For this driver, we'll just print the values.
+
+            float duration = vrevent.data.hapticVibration.fDurationSeconds;
+            float frequency = vrevent.data.hapticVibration.fFrequency;
+            float amplitude = vrevent.data.hapticVibration.fAmplitude;
+
+            DriverLog("Haptic event triggered for %s hand. Duration: %.2f, Frequency: %.2f, Amplitude: %.2f", my_controller_role_ == vr::TrackedControllerRole_LeftHand ? "left" : "right",
+                duration, frequency, amplitude);
+        }
+        break;
+    }
+    default:
+        break;
+    }
 }
 
 //-----------------------------------------------------------------------------
 // Purpose: Meh idk, ipc update
 //-----------------------------------------------------------------------------
-void MyTrackerDeviceDriver::hProcessMsg(olc::net::message<HeaderStatus>& msg)
+void MyControllerDeviceDriver::hProcessMsg(olc::net::message<HeaderStatus>& msg)
 {
     sDeviceNetPacket desc;
     msg >> desc;
@@ -337,12 +383,12 @@ void MyTrackerDeviceDriver::hProcessMsg(olc::net::message<HeaderStatus>& msg)
 // Purpose: Our IServerTrackedDeviceProvider needs our serial number to add us to vrserver.
 // It's not part of the ITrackedDeviceServerDriver interface, we created it ourselves.
 //-----------------------------------------------------------------------------
-const std::string& MyTrackerDeviceDriver::hGetSerialNumber()
+const std::string& MyControllerDeviceDriver::hGetSerialNumber()
 {
     return my_device_serial_number_;
 }
 
-DeviceType MyTrackerDeviceDriver::hGetDeviceType()
+DeviceType MyControllerDeviceDriver::hGetDeviceType()
 {
-    return DeviceType::Tracker;
+    return DeviceType::ControllerViveLike;
 }

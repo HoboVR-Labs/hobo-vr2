@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 
 #include "driver_ipc.hpp"
+#include "controller_device.hpp"
 #include "driver_tracked_device.h"
 #include "driverlog.h"
 
@@ -107,6 +108,9 @@ void IpcServer::OnDeviceAdded(std::shared_ptr<olc::net::connection<HeaderStatus>
         }
 
         switch (desc.eDeviceType) {
+        case DeviceType::ControllerViveLike:
+            tracker_device = std::make_unique<MyControllerDeviceDriver>(client->GetID(), desc.eDeviceRole);
+            break;
         case DeviceType::Tracker:
         default: // tracker is the default type
             tracker_device = std::make_unique<MyTrackerDeviceDriver>(client->GetID());

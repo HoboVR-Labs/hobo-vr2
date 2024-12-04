@@ -9,6 +9,10 @@
 #define OLC_PGEX_NETWORK
 #include "olcPGEX_Network.h"
 
+#ifndef NOOPENVR
+#include <openvr_driver.h>
+#endif // #ifndef NOOPENVR
+
 #include <array>
 #include <bitset>
 
@@ -45,9 +49,40 @@ enum class DeviceType : uint8_t {
     Invalid
 };
 
+enum class DeviceRole : uint8_t {
+    Left,
+    Right,
+    Neither,
+    Stylus,
+    Treadmill,
+    Invalid
+};
+
+#ifndef NOOPENVR
+inline vr::ETrackedControllerRole toVr(const DeviceRole value)
+{
+    switch (value) {
+    case DeviceRole::Left:
+        return vr::ETrackedControllerRole::TrackedControllerRole_LeftHand;
+    case DeviceRole::Right:
+        return vr::ETrackedControllerRole::TrackedControllerRole_RightHand;
+    case DeviceRole::Neither:
+        return vr::ETrackedControllerRole::TrackedControllerRole_OptOut;
+    case DeviceRole::Stylus:
+        return vr::ETrackedControllerRole::TrackedControllerRole_Stylus;
+    case DeviceRole::Treadmill:
+        return vr::ETrackedControllerRole::TrackedControllerRole_Treadmill;
+    case DeviceRole::Invalid:
+    default:
+        return vr::ETrackedControllerRole::TrackedControllerRole_Invalid;
+    }
+}
+#endif // #ifndef NOOPENVR
+
 struct sDeviceNetPacket {
     uint32_t nUniqueID = 0;
     DeviceType eDeviceType = DeviceType::Tracker;
+    DeviceRole eDeviceRole = DeviceRole::Invalid;
 
     hvr::math::vec3d vPos = {};
     hvr::math::vec3d vVel = {};
@@ -63,8 +98,9 @@ struct sDeviceNetPacket {
     // the skeletal input in the openvr repo inly uses 39 floats per hand
     std::array<float, 64> aFloatStates = { {} };
 
-    // reserved extra to pad the packet payload to 512 bytes
-    std::array<uint8_t, 145> reserved;
+    // reserved extra to pad the packet to 512 bytes, this takes into account the extra 8 bytes
+    // in the header
+    std::array<uint8_t, 136> reserved;
 };
 
 #endif // #ifndef COMMON_HEADER_HELPER_HPP

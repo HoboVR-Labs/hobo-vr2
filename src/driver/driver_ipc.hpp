@@ -16,7 +16,7 @@ public:
     std::unordered_map<uint32_t, std::unique_ptr<IHvrTrackedDevice>> my_tracker_devices;
     std::vector<std::unique_ptr<IHvrTrackedDevice>> m_deactivated_devices;
 
-    static constexpr const std::array<DeviceType, 1> m_supported_device_types = { { DeviceType::Tracker } };
+    static constexpr const std::array<DeviceType, 2> m_supported_device_types = { { DeviceType::Tracker, DeviceType::ControllerViveLike } };
 
 protected:
     bool OnClientConnect(std::shared_ptr<olc::net::connection<HeaderStatus>> client) override;
@@ -27,13 +27,13 @@ protected:
 
     void OnMessage(std::shared_ptr<olc::net::connection<HeaderStatus>> client, olc::net::message<HeaderStatus>& msg) override;
 
-public:
     void OnDeviceAdded(std::shared_ptr<olc::net::connection<HeaderStatus>> client, const sDeviceNetPacket& desc);
 
     void OnDeviceUpdate(std::shared_ptr<olc::net::connection<HeaderStatus>> client, olc::net::message<HeaderStatus>& msg);
 
     void OnDeviceRemove(const uint32_t pid);
 
+public:
     void OnVRevent(const vr::VREvent_t& event);
 
     void StopAllDevices();

@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: OLC
 
+#define NOOPENVR
 #include "common.hpp"
 
 #define OLC_PGE_APPLICATION
@@ -97,12 +98,17 @@ public:
 
 class MMOGame : public olc::PixelGameEngine, olc::net::client_interface<HeaderStatus> {
 public:
-    MMOGame()
+    MMOGame(const DeviceType type, const DeviceRole role)
+        : m_device_type(type)
+        , m_device_role(role)
     {
+        std::cout << "starting with device type: " << static_cast<int>(type) << "\n";
         sAppName = "MMO Client";
     }
 
 private:
+    DeviceType m_device_type;
+    DeviceRole m_device_role;
     olc::TileTransformedView tv;
 
     std::string sWorldMap = "################################"
@@ -176,6 +182,8 @@ public:
                     olc::net::message<HeaderStatus> msg;
                     msg.header.id = HeaderStatus::Client_RegisterWithServer;
                     descPlayer.vPos = { 3.0f, 0, 3.0f };
+                    descPlayer.eDeviceType = m_device_type;
+                    descPlayer.eDeviceRole = m_device_role;
                     msg << descPlayer;
                     Send(msg);
                     break;
@@ -268,7 +276,7 @@ public:
 
                         // But modified to work :P
                         olc::vf2d vRayToNearest = vNearestPoint - vPotentialPosition;
-                        float fOverlap = 15 - vRayToNearest.mag();
+                        float fOverlap = 0.5f - vRayToNearest.mag();
                         if (std::isnan(fOverlap))
                             fOverlap = 0; // Thanks Dandistine!
 
@@ -320,15 +328,15 @@ public:
             const auto tmp_pos = olc::vf2d(object.second.vPos.x, object.second.vPos.z);
             const auto tmp_vel = olc::vf2d((object.second.vVel).x, (object.second.vVel).z);
 
-            tv.DrawCircle(tmp_pos, 15);
+            tv.DrawCircle(tmp_pos, 0.5f);
 
             // Draw Velocity
             if (object.second.vVel.mag2() > 0)
-                tv.DrawLine(tmp_pos, tmp_pos + tmp_vel.norm() * 15, olc::MAGENTA);
+                tv.DrawLine(tmp_pos, tmp_pos + tmp_vel.norm() * 0.5f, olc::MAGENTA);
 
             // Draw Name
             olc::vi2d vNameSize = GetTextSizeProp("ID: " + std::to_string(object.first));
-            tv.DrawStringPropDecal(tmp_pos - olc::vf2d { vNameSize.x * 0.5f * 0.25f * 0.125f, -15 * 1.25f }, "ID: " + std::to_string(object.first), olc::BLUE, { 0.25f, 0.25f });
+            tv.DrawStringPropDecal(tmp_pos - olc::vf2d { vNameSize.x * 0.5f * 0.25f * 0.125f, -0.5f * 1.25f }, "ID: " + std::to_string(object.first), olc::BLUE, { 0.25f, 0.25f });
         }
 
         // Send player description
@@ -345,10 +353,33 @@ public:
 int main()
 {
     int choice;
-    std::cout << "bench/demo? (0/1)\n";
+    std::cout << "bench/demo? [0/1]\n";
     std::cin >> choice;
     if (choice) {
-        MMOGame demo;
+        char devicetype;
+
+        std::cout << "device type? [t/c]";
+        std::cin.clear();
+        std::cin >> devicetype;
+
+        std::unordered_map<char, DeviceType> types = {
+            { 'c', DeviceType::ControllerViveLike },
+            { 't', DeviceType::Tracker },
+        };
+
+        DeviceType device_type = DeviceType::Tracker;
+        DeviceRole device_role = DeviceRole::Left;
+
+        const auto res = types.find(devicetype);
+        if (res != types.end()) {
+            device_type = res->second;
+        }
+
+        if (device_type == DeviceType::Tracker) {
+            device_role = DeviceRole::Neither;
+        }
+
+        MMOGame demo(device_type, device_role);
         if (demo.Construct(480, 480, 1, 1))
             demo.Start();
     } else {
