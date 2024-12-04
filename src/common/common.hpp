@@ -77,6 +77,29 @@ inline vr::ETrackedControllerRole toVr(const DeviceRole value)
         return vr::ETrackedControllerRole::TrackedControllerRole_Invalid;
     }
 }
+
+inline vr::ETrackedDeviceClass toVr(const DeviceType value)
+{
+    switch (value) {
+    case DeviceType::Hmd:
+    case DeviceType::HmdDirectDisplay:
+    case DeviceType::HmdVirtualDisplay:
+        return vr::ETrackedDeviceClass::TrackedDeviceClass_HMD;
+    case DeviceType::ControllerViveLike:
+    case DeviceType::ControllerIndexLike:
+    case DeviceType::ControllerQuestLike:
+        return vr::ETrackedDeviceClass::TrackedDeviceClass_Controller;
+    case DeviceType::Tracker:
+    case DeviceType::EyeTracker:
+    case DeviceType::FaceTracker:
+        return vr::ETrackedDeviceClass::TrackedDeviceClass_GenericTracker;
+    case DeviceType::BaseStation:
+        return vr::ETrackedDeviceClass::TrackedDeviceClass_TrackingReference;
+    case DeviceType::Invalid:
+    default:
+        return vr::ETrackedDeviceClass::TrackedDeviceClass_Invalid;
+    }
+}
 #endif // #ifndef NOOPENVR
 
 struct sDeviceNetPacket {

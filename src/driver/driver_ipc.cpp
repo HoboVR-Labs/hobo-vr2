@@ -109,10 +109,12 @@ void IpcServer::OnDeviceAdded(std::shared_ptr<olc::net::connection<HeaderStatus>
 
         switch (desc.eDeviceType) {
         case DeviceType::ControllerViveLike:
+            DriverLog("Adding controller device");
             tracker_device = std::make_unique<MyControllerDeviceDriver>(client->GetID(), desc.eDeviceRole);
             break;
         case DeviceType::Tracker:
         default: // tracker is the default type
+            DriverLog("Adding tracker device");
             tracker_device = std::make_unique<MyTrackerDeviceDriver>(client->GetID());
             break;
         }
@@ -124,8 +126,10 @@ void IpcServer::OnDeviceAdded(std::shared_ptr<olc::net::connection<HeaderStatus>
         // Let's add the left hand controller first (there isn't a specific order).
         // make sure we actually managed to create the device.
         // TrackedDeviceAdded returning true means we have had our device added to SteamVR.
-        if (!vr::VRServerDriverHost()->TrackedDeviceAdded(tracker_device->hGetSerialNumber().c_str(),
-                vr::TrackedDeviceClass_GenericTracker, tracker_device.get())) {
+        if (!vr::VRServerDriverHost()->TrackedDeviceAdded(
+                tracker_device->hGetSerialNumber().c_str(),
+                toVr(desc.eDeviceType),
+                tracker_device.get())) {
             DriverLog("Failed to create device!");
             // We failed? Return early.
             return;
@@ -171,11 +175,6 @@ void IpcServer::OnVRevent(const vr::VREvent_t& event)
 void IpcServer::StopAllDevices()
 {
     for (auto& tracker : my_tracker_devices) {
-        olc::net::message<HeaderStatus> m;
-        m.header.id = HeaderStatus::Client_RemoveDevice;
-        m << tracker.first;
-        DriverLog("Removing %lu", tracker.first);
-        MessageAllClients(m);
         tracker.second = nullptr;
     }
 }

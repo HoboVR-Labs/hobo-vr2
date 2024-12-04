@@ -69,7 +69,7 @@ void HvrDeviceProvider::MyIpcThread()
         return;
 
     while (m_ipc_is_active) {
-        m_ipc_server->Update(-1, true);
+        m_ipc_server->Update(-1, false);
     }
 }
 

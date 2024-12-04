@@ -68,21 +68,6 @@ vr::EVRInitError MyControllerDeviceDriver::Activate(uint32_t unObjectId)
 
     // Now let's set up our inputs
 
-    // This tells the UI what to show the user for bindings for this controller,
-    // As well as what default bindings should be for legacy apps.
-    // Note, we can use the wildcard {<driver_name>} to match the root folder location
-    // of our driver.
-    vr::VRProperties()->SetStringProperty(
-        container, vr::Prop_InputProfilePath_String, "{asiotest}/input/mytracker_profile.json");
-
-    // Let's set up handles for all of our components.
-    // Even though these are also defined in our input profile,
-    // We need to get handles to them to update the inputs.
-
-    // Let's set up our "A" button. We've defined it to have a touch and a click component.
-    vr::VRDriverInput()->CreateBooleanComponent(container, "/input/a/touch", &input_handles_[MyControllerComponent_a_touch]);
-    vr::VRDriverInput()->CreateBooleanComponent(container, "/input/a/click", &input_handles_[MyControllerComponent_a_click]);
-
     // Let's tell SteamVR our role which we received from the constructor earlier.
     vr::VRProperties()->SetInt32Property(container, vr::Prop_ControllerRoleHint_Int32, my_controller_role_);
 

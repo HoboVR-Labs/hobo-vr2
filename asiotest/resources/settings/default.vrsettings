@@ -1,6 +1,5 @@
 {
    "driver_asiotest" : {
-      "enable" : true,
-      "mytracker_model_number" : "MyTrackerModelNumber 1"
+      "enable" : true
    }
 }

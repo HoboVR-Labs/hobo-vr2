@@ -3,8 +3,8 @@
   "controller_type": "mytracker",
   "input_bindingui_mode": "single_device",
   "tracker_types": {
-    "TrackerRole_Waist": "{simpletrackers}/input/tracker/mytracker_waist_profile.json",
-    "TrackerRole_Chest": "{simpletrackers}/input/tracker/mytracker_chest_profile.json"
+    "TrackerRole_Waist": "{asiotest}/input/tracker/mytracker_waist_profile.json",
+    "TrackerRole_Chest": "{asiotest}/input/tracker/mytracker_chest_profile.json"
   },
   "input_source": {
     "/input/a": {

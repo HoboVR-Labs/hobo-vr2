@@ -3,10 +3,10 @@
 	"controller_type": "mycontroller",
 	"input_bindingui_mode": "controller_handed",
 	"input_bindingui_left": {
-		"image": "{simplecontroller}/icons/sample_controller.svg"
+		"image": "{asiotest}/icons/sample_controller.svg"
 	},
 	"input_bindingui_right": {
-		"image": "{simplecontroller}/icons/sample_controller.svg"
+		"image": "{asiotest}/icons/sample_controller.svg"
 	},
 	"input_source": {
 		"/input/a": {
