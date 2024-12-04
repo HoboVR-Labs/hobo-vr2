@@ -1,0 +1,8 @@
+{
+	"alwaysActivate": true,
+	"name" : "asiotest",
+	"directory" : "",
+	"resourceOnly" : false,
+
+	"hmd_presence" : []
+}
