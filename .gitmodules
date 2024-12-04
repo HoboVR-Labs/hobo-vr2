@@ -1,0 +1,6 @@
+[submodule "olcPixelGameEngine"]
+	path = olcPixelGameEngine
+	url = git@github.com:OneLoneCoder/olcPixelGameEngine.git
+[submodule "openvr"]
+	path = openvr
+	url = git@github.com:ValveSoftware/openvr.git
