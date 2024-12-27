@@ -1,5 +1,6 @@
 output
 build*
 *.txt
+!CMakeLists.txt
 .cache
 compile_commands.json
